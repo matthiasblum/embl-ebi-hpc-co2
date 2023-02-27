@@ -12,7 +12,7 @@ def main():
     parser.add_argument("--to", dest="end_time",
                         metavar="YYYY-MM-DD HH:MM:SS",
                         help="select jobs running before the specified time")
-    parser.add_argument("--user", metavar="USER",
+    parser.add_argument("-u", "--user", metavar="USER",
                         help="list USER's jobs only")
     parser.add_argument("database", help="database file")
     args = parser.parse_args()
