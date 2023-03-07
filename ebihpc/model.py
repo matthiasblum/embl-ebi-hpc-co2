@@ -56,7 +56,8 @@ class Job:
         mem_eff = None
         try:
             mem_lim = 100.0 / self.mem_efficiency * self.mem_max
-        except ZeroDivisionError:
+        except (TypeError, ZeroDivisionError):
+            # May happen if mem_efficiency=0 or mem_max=None
             if self.mem_lim is not None:
                 mem_eff = min(self.mem_efficiency, 100)
         else:
