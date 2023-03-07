@@ -130,7 +130,7 @@ def main():
     logging.info("Processing jobs")
     with ProcessPoolExecutor(max_workers=max(1, args.workers)) as executor:
         fs = {}
-        for dt in range_dt(from_time, to_time, timedelta(days=1)):
+        for dt in usagedb.range_dt(from_time, to_time, timedelta(days=1)):
             dt2 = dt + timedelta(days=1)
             f = executor.submit(process_jobs, args.input, dt, dt2, user2index)
             fs[f] = dt.strftime("%Y-%m-%d")
@@ -150,7 +150,7 @@ def main():
 def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
                  user2index: dict[str, int]) -> tuple[str, int]:
     # Stats in intervals of one minute
-    job_intervals = list(range_dt(from_dt, to_dt, timedelta(minutes=1)))
+    job_intervals = list(usagedb.range_dt(from_dt, to_dt, timedelta(minutes=1)))
     users_data = []
     for _ in job_intervals:
         obj = []
@@ -167,7 +167,8 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
         users_data.append(obj)
 
     # Stats in intervals of 15 minutes
-    final_intervals = list(range_dt(from_dt, to_dt, timedelta(minutes=15)))
+    final_intervals = list(usagedb.range_dt(from_dt, to_dt,
+                                            timedelta(minutes=15)))
     jobs_data = []
     users_extra_data = []
     for _ in final_intervals:
@@ -228,34 +229,28 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
 
         mem_power = mem_gb * const.MEM_POWER
 
-        """
-        There are two types of start/finish time:
-            - real, as reported by the job scheduler
-            - used, the time used to calculate to footprint in our interval 
-                of interest
-        """
-        real_start_time = job.start_time
-        used_start_time = max(job.start_time, from_dt)
-        real_finish_time = job.finish_time
-        if real_finish_time:
-            if real_start_time == real_finish_time:
-                # One minute or less
-                real_finish_time += timedelta(minutes=1)
+        start_time = job.start_time
+        finish_time = job.finish_time
+        if finish_time is None:
+            finish_time = min(last_jobs_update, to_dt)
+        elif start_time == finish_time:
+            # One minute or less
+            finish_time += timedelta(minutes=1)
 
-            used_finish_time = real_finish_time
-        else:
-            used_finish_time = min(last_jobs_update, to_dt)
-
-        # Runtime of the job in our interval of interest
-        runtime_min = (used_finish_time - used_start_time).total_seconds() / 60
+        # Runtime of the job
+        runtime_min = (finish_time - start_time).total_seconds() / 60
         energy_kw = (cores_power + mem_power) / 1000
         co2e, cost = const.calc_footprint(energy_kw, runtime_min / 60)
         cpu_time = job.cpu_time or 0
 
+        # Move start_time to beginning of interval of interest
+        while start_time < from_dt:
+            start_time += timedelta(minutes=1)
+
         # Update user data for every interval of 15min during which the job ran
-        i = bisect.bisect_left(job_intervals, used_start_time)
+        i = bisect.bisect_left(job_intervals, start_time)
         j = user2index[job.user]
-        while i < len(job_intervals) and job_intervals[i] < used_finish_time:
+        while i < len(job_intervals) and job_intervals[i] < finish_time:
             user_data = users_data[i][j]
             user_data["jobs"] += 1 / runtime_min
             user_data["cores"] += job.slots
@@ -273,14 +268,14 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
             # Record job as submitted in this interval
             users_extra_data[i][j]["submitted"] += 1
 
-        if real_finish_time is not None and real_finish_time < to_dt:
+        if job.finish_time and finish_time < to_dt:
             # Record job as completed in this interval
-            i = bisect.bisect_right(final_intervals, real_finish_time) - 1
+            i = bisect.bisect_right(final_intervals, finish_time) - 1
             if i < 0:
                 raise ValueError
 
             # Footprint of entire job
-            runtime = (real_finish_time - real_start_time).total_seconds()
+            runtime = (job.start_time - finish_time).total_seconds()
             co2e, cost = const.calc_footprint(energy_kw, runtime / 3600)
 
             user_data = users_extra_data[i][j]
@@ -374,12 +369,6 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
             ), fh)
 
     return output, num_jobs
-
-
-def range_dt(start: datetime, stop: datetime, step: timedelta):
-    while start < stop:
-        yield start
-        start += step
 
 
 if __name__ == '__main__':

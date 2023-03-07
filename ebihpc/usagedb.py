@@ -1,7 +1,7 @@
 import json
 import pickle
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from .model import UnixUser, User, DT_REPR
 
@@ -131,3 +131,9 @@ def update_reports(database: str, dt: datetime, data: dict[str, dict]):
                     )
     con.commit()
     con.close()
+
+
+def range_dt(start: datetime, stop: datetime, step: timedelta):
+    while start < stop:
+        yield start
+        start += step

@@ -69,21 +69,25 @@ def main():
 
         mem_power = mem_gb * const.MEM_POWER
 
-        real_start_time = job.start_time
-        used_start_time = max(job.start_time, from_time)
-        real_finish_time = job.finish_time
-        if real_finish_time:
-            if real_start_time == real_finish_time:
-                # One minute or less
-                real_finish_time += timedelta(minutes=1)
+        start_time = job.start_time
+        finish_time = job.finish_time
+        if finish_time is None:
+            finish_time = min(last_jobs_update, to_time)
+        elif start_time == finish_time:
+            # One minute or less
+            finish_time += timedelta(minutes=1)
 
-            used_finish_time = real_finish_time
-        else:
-            used_finish_time = min(last_jobs_update, to_time)
-
-        runtime_min = (used_finish_time - used_start_time).total_seconds() / 60
+        runtime_min = (finish_time - start_time).total_seconds() / 60
         energy_kw = (cores_power + mem_power) / 1000
         co2e, cost = const.calc_footprint(energy_kw, runtime_min / 60)
+        minutes = 0
+        for dt in usagedb.range_dt(start_time,
+                                   finish_time,
+                                   timedelta(minutes=1)):
+            if dt >= to_time:
+                break
+            elif from_time <= dt:
+                minutes += 1
 
         try:
             data = user_data[job.user]
@@ -103,14 +107,14 @@ def main():
             }
 
         data["jobs"]["total"] += 1
-        if job.finish_time is not None:
+        if job.finish_time:
             if job.ok:
                 data["jobs"]["done"] += 1
             else:
                 data["jobs"]["exit"] += 1
 
-        data["co2e"] += co2e
-        data["cost"] += cost
+        data["co2e"] += co2e / runtime_min * minutes
+        data["cost"] += cost / runtime_min * minutes
         if use_mem_eff:
             data["memory"][min(math.floor(mem_eff), 99)] += 1
 
