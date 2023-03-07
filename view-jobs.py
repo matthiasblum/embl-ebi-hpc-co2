@@ -40,7 +40,6 @@ def main():
         "CPU efficiency",
         "Mem. limit",
         "Max mem. used",
-        "Mem. efficiency",
         "Submit time",
         "Start time",
         "Finish time"
@@ -50,7 +49,7 @@ def main():
     for job in jobdb.find_jobs(con, from_dt, to_dt, args.user):
         row = [f"{job.id}[{job.index}]", job.status, job.user, job.queue,
                job.slots, job.cpu_efficiency, job.mem_lim, job.mem_max,
-               job.mem_efficiency, strftime(job.submit_time, date_fmt),
+               strftime(job.submit_time, date_fmt),
                strftime(job.start_time, date_fmt),
                strftime(job.finish_time, date_fmt)]
         row = [v if v is not None else "-" for v in row]

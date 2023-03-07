@@ -51,17 +51,17 @@ def main():
             logging.debug(f"{num_jobs:>20,}")
 
         cpu_eff = min(job.cpu_efficiency, 100)
-        mem_eff = min(job.mem_efficiency, 100)
 
         cores_power = job.slots * (cpu_eff / 100) * const.CPU_POWER
         if "gpu" in job.queue:
             # Unknown GPU number and GPU efficiency: assume 1
             cores_power += 1 * 1 * const.GPU_POWER
 
-        use_mem_eff = False
+        mem_eff = None
         if job.mem_lim is not None:
             mem_gb = job.mem_lim / 1024
-            use_mem_eff = True
+            if job.mem_max is not None and job.mem_lim != 0:
+                mem_eff = min(1.0, job.mem_max / job.mem_lim) * 100
         elif job.mem_max is not None:
             mem_gb = job.mem_max / 1024
         else:
@@ -115,7 +115,7 @@ def main():
 
         data["co2e"] += co2e / runtime_min * minutes
         data["cost"] += cost / runtime_min * minutes
-        if use_mem_eff:
+        if mem_eff is not None:
             data["memory"][min(math.floor(mem_eff), 99)] += 1
 
         data["cputime"] += job.cpu_time or 0

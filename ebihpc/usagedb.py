@@ -211,17 +211,16 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
             logging.debug(f"{label}: {num_jobs:>20,}")
 
         cpu_eff = min(job.cpu_efficiency, 100)
-        mem_eff = min(job.mem_efficiency, 100)
-
         cores_power = job.slots * (cpu_eff / 100) * const.CPU_POWER
         if "gpu" in job.queue:
             # Unknown GPU number and GPU efficiency: assume 1
             cores_power += 1 * 1 * const.GPU_POWER
 
-        use_mem_eff = False
+        mem_eff = None
         if job.mem_lim is not None:
             mem_gb = job.mem_lim / 1024
-            use_mem_eff = True
+            if job.mem_max is not None and job.mem_lim != 0:
+                mem_eff = min(1.0, job.mem_max / job.mem_lim) * 100
         elif job.mem_max is not None:
             mem_gb = job.mem_max / 1024
         else:
@@ -283,7 +282,7 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
             if job.ok:
                 user_data["done"] += 1
 
-                if use_mem_eff:
+                if mem_eff is not None:
                     if mem_eff < 20:
                         user_data["memeff"][0] += 1
                     elif mem_eff < 40:
@@ -307,7 +306,7 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
                     user_data["cpueff"][4] += 1
 
                 job_data["done"] += 1
-                if use_mem_eff:
+                if mem_eff is not None:
                     j = min(math.floor(mem_eff), 99)
                     job_data["memeff"]["dist"][j] += 1
 
@@ -320,7 +319,7 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
                 else:
                     job_data["runtimes"][-1] += 1
 
-                if use_mem_eff:
+                if mem_eff is not None:
                     # Footprint of entire job with good memory efficiency (+10%)
                     opti_mem = (mem_gb * mem_eff / 100) * 1.1
                     mem_power = opti_mem * const.MEM_POWER
