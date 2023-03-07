@@ -49,6 +49,21 @@ class Job:
 
         return False
 
+    def fix_mem(self) -> tuple[int | float | None,
+                               int | float | None,
+                               float | None]:
+        mem_lim = self.mem_lim
+        mem_eff = None
+        try:
+            mem_lim = 100.0 / self.mem_efficiency * self.mem_max
+        except ZeroDivisionError:
+            if self.mem_lim is not None:
+                mem_eff = min(self.mem_efficiency, 100)
+        else:
+            mem_eff = min(self.mem_efficiency, 100)
+
+        return mem_lim, self.mem_max, mem_eff
+
     def to_tuple(self) -> tuple:
         return (
             self.accession,

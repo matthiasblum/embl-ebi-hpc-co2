@@ -216,16 +216,8 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
             # Unknown GPU number and GPU efficiency: assume 1
             cores_power += 1 * 1 * const.GPU_POWER
 
-        mem_eff = None
-        if job.mem_lim is not None:
-            mem_gb = job.mem_lim / 1024
-            if job.mem_max is not None and job.mem_lim != 0:
-                mem_eff = min(1.0, job.mem_max / job.mem_lim) * 100
-        elif job.mem_max is not None:
-            mem_gb = job.mem_max / 1024
-        else:
-            mem_gb = 0
-
+        mem_lim, mem_max, mem_eff = job.fix_mem()
+        mem_gb = (mem_lim or mem_max or 0) / 1024
         mem_power = mem_gb * const.MEM_POWER
 
         start_time = job.start_time
