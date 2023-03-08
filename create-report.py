@@ -51,39 +51,35 @@ def main():
             logging.debug(f"{num_jobs:>20,}")
 
         cpu_eff = min(job.cpu_efficiency, 100)
-        mem_eff = min(job.mem_efficiency, 100)
 
         cores_power = job.slots * (cpu_eff / 100) * const.CPU_POWER
         if "gpu" in job.queue:
             # Unknown GPU number and GPU efficiency: assume 1
             cores_power += 1 * 1 * const.GPU_POWER
 
-        use_mem_eff = False
-        if job.mem_lim is not None:
-            mem_gb = job.mem_lim / 1024
-            use_mem_eff = True
-        elif job.mem_max is not None:
-            mem_gb = job.mem_max / 1024
-        else:
-            mem_gb = 0
-
+        mem_lim, mem_max, mem_eff = job.fix_mem()
+        mem_gb = (mem_lim or mem_max or 0) / 1024
         mem_power = mem_gb * const.MEM_POWER
 
-        real_start_time = job.start_time
-        used_start_time = max(job.start_time, from_time)
-        real_finish_time = job.finish_time
-        if real_finish_time:
-            if real_start_time == real_finish_time:
-                # One minute or less
-                real_finish_time += timedelta(minutes=1)
+        start_time = job.start_time
+        finish_time = job.finish_time
+        if finish_time is None:
+            finish_time = min(last_jobs_update, to_time)
+        elif start_time == finish_time:
+            # One minute or less
+            finish_time += timedelta(minutes=1)
 
-            used_finish_time = real_finish_time
-        else:
-            used_finish_time = min(last_jobs_update, to_time)
-
-        runtime_min = (used_finish_time - used_start_time).total_seconds() / 60
+        runtime_min = (finish_time - start_time).total_seconds() / 60
         energy_kw = (cores_power + mem_power) / 1000
         co2e, cost = const.calc_footprint(energy_kw, runtime_min / 60)
+        minutes = 0
+        for dt in usagedb.range_dt(start_time,
+                                   finish_time,
+                                   timedelta(minutes=1)):
+            if dt >= to_time:
+                break
+            elif from_time <= dt:
+                minutes += 1
 
         try:
             data = user_data[job.user]
@@ -103,15 +99,15 @@ def main():
             }
 
         data["jobs"]["total"] += 1
-        if job.finish_time is not None:
+        if job.finish_time:
             if job.ok:
                 data["jobs"]["done"] += 1
             else:
                 data["jobs"]["exit"] += 1
 
-        data["co2e"] += co2e
-        data["cost"] += cost
-        if use_mem_eff:
+        data["co2e"] += co2e / runtime_min * minutes
+        data["cost"] += cost / runtime_min * minutes
+        if mem_eff is not None:
             data["memory"][min(math.floor(mem_eff), 99)] += 1
 
         data["cputime"] += job.cpu_time or 0

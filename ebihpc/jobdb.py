@@ -197,3 +197,17 @@ def find_jobs(con: sqlite3.Connection, from_dt: datetime, to_dt: datetime,
         inc_params
     ):
         yield Job.from_tuple(row)
+
+
+def fix_mem_lim(job: Job) -> float:
+    use_mem_eff = False
+    if job.mem_lim is not None:
+        mem_gb = job.mem_lim / 1024
+        use_mem_eff = True
+    elif job.mem_max is not None:
+        mem_gb = job.mem_max / 1024
+    else:
+        mem_gb = 0
+
+    mem_max = job.mem_max
+    mem_lim = job.mem_lim
