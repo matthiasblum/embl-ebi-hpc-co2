@@ -266,7 +266,7 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
                 raise ValueError
 
             # Footprint of entire job
-            runtime = (job.start_time - finish_time).total_seconds()
+            runtime = (finish_time - job.start_time).total_seconds()
             co2e, cost = const.calc_footprint(energy_kw, runtime / 3600)
 
             user_data = users_extra_data[i][j]
