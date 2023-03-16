@@ -1,5 +1,6 @@
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
+from concurrent.futures import as_completed, ProcessPoolExecutor
 
 from .model import Job, UnixUser, DT_REPR
 
@@ -153,8 +154,9 @@ def get_latest_update_time(con: sqlite3.Connection) -> datetime:
     return datetime.strptime(date_str, DT_REPR)
 
 
-def find_jobs(con: sqlite3.Connection, from_dt: datetime, to_dt: datetime,
+def _find_jobs(database: str, from_dt: datetime, to_dt: datetime,
               user: str | None = None):
+    con = connect(database)
     from_time = from_dt.strftime(DT_REPR)
     to_time = to_dt.strftime(DT_REPR)
 
@@ -169,31 +171,60 @@ def find_jobs(con: sqlite3.Connection, from_dt: datetime, to_dt: datetime,
         user_filter = ""
 
     for row in con.execute(
-        f"""
-        SELECT *
-        FROM job
-        WHERE start_time IS NOT NULL
-          AND (
-            (start_time >= ? AND start_time < ?)
-            OR
-            (finish_time >= ? AND finish_time < ?)
-            OR
-            (start_time < ? AND finish_time >= ?)
-          )
-          {user_filter}
-        """,
-        job_params
+            f"""
+            SELECT *
+            FROM job
+            WHERE start_time IS NOT NULL
+              AND (
+                (start_time >= ? AND start_time < ?)
+                OR
+                (finish_time >= ? AND finish_time < ?)
+                OR
+                (start_time < ? AND finish_time >= ?)
+              )
+              {user_filter}
+            """,
+            job_params
     ):
         yield Job.from_tuple(row)
 
     for row in con.execute(
-        f"""
-        SELECT *
-        FROM incomplete
-        WHERE start_time IS NOT NULL
-          AND start_time < ?
-          {user_filter}
-        """,
-        inc_params
+            f"""
+            SELECT *
+            FROM incomplete
+            WHERE start_time IS NOT NULL
+              AND start_time < ?
+              {user_filter}
+            """,
+            inc_params
     ):
         yield Job.from_tuple(row)
+
+    con.close()
+
+
+def _collect_jobs(*args):
+    return list(_find_jobs(*args))
+
+
+def find_jobs(database: str, from_dt: datetime, to_dt: datetime,
+              user: str | None = None, workers: int = 1):
+    if workers > 1:
+        jobs = []
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            fs = []
+            start = from_dt
+            stop = min(to_dt, start + timedelta(days=1))
+
+            while start < to_dt:
+                f = executor.submit(_collect_jobs, database, start, stop, user)
+                fs.append(f)
+                start = stop
+                stop = min(to_dt, start + timedelta(days=1))
+
+            for f in as_completed(fs):
+                jobs += f.result()
+
+            return jobs
+    else:
+        return _find_jobs(database, from_dt, to_dt, user)

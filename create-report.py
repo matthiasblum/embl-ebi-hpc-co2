@@ -41,10 +41,11 @@ def main():
         
     con = jobdb.connect(args.input)
     last_jobs_update = jobdb.get_latest_update_time(con)
+    con.close()
 
     user_data = {}
     num_jobs = 0
-    for job in jobdb.find_jobs(con, from_time, to_time):
+    for job in jobdb.find_jobs(args.input, from_time, to_time):
         num_jobs += 1
 
         if num_jobs % 1e6 == 0:

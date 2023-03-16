@@ -45,8 +45,7 @@ def main():
         "Finish time"
     ]))
 
-    con = jobdb.connect(args.database)
-    for job in jobdb.find_jobs(con, from_dt, to_dt, args.user):
+    for job in jobdb.find_jobs(args.database, from_dt, to_dt, args.user):
         row = [f"{job.id}[{job.index}]", job.status, job.user, job.queue,
                job.slots, job.cpu_efficiency, job.mem_lim, job.mem_max,
                strftime(job.submit_time, date_fmt),
@@ -54,8 +53,6 @@ def main():
                strftime(job.finish_time, date_fmt)]
         row = [v if v is not None else "-" for v in row]
         print("\t".join(map(str, row)))
-
-    con.close()
 
 
 def strftime(dt: datetime | None, fmt: str) -> str:
