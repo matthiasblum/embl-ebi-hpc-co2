@@ -204,7 +204,10 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
                 "co2e": 0,
                 "cost": 0,
                 "memlim": 0,
-                "more1h": 0,
+                "more1h": {
+                    "total": 0,
+                    "co2e": 0
+                },
             }
         })
 
@@ -334,7 +337,8 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
                 job_data["failed"]["cost"] += cost
 
                 if runtime >= 3600:
-                    job_data["failed"]["more1h"] += 1
+                    job_data["failed"]["more1h"]["total"] += 1
+                    job_data["failed"]["more1h"]["co2e"] += co2e
 
                 if (mem_max is not None
                         and mem_lim is not None
