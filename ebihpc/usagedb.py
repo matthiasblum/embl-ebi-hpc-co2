@@ -188,7 +188,10 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
         users_extra_data.append(obj)
 
         jobs_data.append({
-            "done": 0,
+            "done": {
+                "total": 0,
+                "co2e": 0,
+            },
             "cpueff": [0] * 100,
             "runtimes": [0] * (len(RUNTIMES) + 1),
             "memeff": {
@@ -304,7 +307,8 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
                 else:
                     user_data["cpueff"][4] += 1
 
-                job_data["done"] += 1
+                job_data["done"]["total"] += 1
+                job_data["done"]["co2e"] += co2e
                 if mem_eff is not None:
                     j = min(math.floor(mem_eff), 99)
                     job_data["memeff"]["dist"][j] += 1
