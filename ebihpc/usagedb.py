@@ -177,7 +177,10 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
             obj.append({
                 "submitted": 0,
                 "done": 0,
-                "failed": 0,
+                "failed": {
+                    "total": 0,
+                    "memlim": 0
+                },
                 "memeff": [0] * 5,
                 "cpueff": [0] * 5,
             })
@@ -194,17 +197,21 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
                 "cost": 0
             },
             "failed": {
-                "count": 0,
+                "total": 0,
                 "co2e": 0,
-                "cost": 0
+                "cost": 0,
+                "runtimes": [0] * (len(RUNTIMES) + 1),
+                "memlim": 0,
             }
         })
 
     con = jobdb.connect(database)
     last_jobs_update = jobdb.get_latest_update_time(con)
+    con.close()
+
     num_jobs = 0
     label = f"{from_dt:%Y-%m-%d} - {to_dt:%Y-%m-%d}"
-    for job in jobdb.find_jobs(con, from_dt, to_dt):
+    for job in jobdb.find_jobs(database, from_dt, to_dt):
         num_jobs += 1
 
         if num_jobs % 1e5 == 0:
@@ -304,12 +311,8 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
 
                 job_data["cpueff"][min(math.floor(cpu_eff), 99)] += 1
 
-                for x, maxtime in enumerate(RUNTIMES):
-                    if runtime <= maxtime:
-                        job_data["runtimes"][x] += 1
-                        break
-                else:
-                    job_data["runtimes"][-1] += 1
+                x = get_runtime_index(runtime)
+                job_data["runtimes"][x] += 1
 
                 if mem_eff is not None:
                     # Footprint of entire job with good memory efficiency (+10%)
@@ -321,10 +324,19 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
                     job_data["memeff"]["co2e"] += (co2e - opti_co2e)
                     job_data["memeff"]["cost"] += (cost - opti_cost)
             else:
-                user_data["failed"] += 1
-                job_data["failed"]["count"] += 1
+                user_data["failed"]["total"] += 1
+                job_data["failed"]["total"] += 1
                 job_data["failed"]["co2e"] += co2e
                 job_data["failed"]["cost"] += cost
+
+                x = get_runtime_index(runtime)
+                job_data["failed"]["runtimes"][x] += 1
+
+                if (mem_max is not None
+                        and mem_lim is not None
+                        and mem_max > mem_lim):
+                    user_data["failed"]["memlim"] += 1
+                    job_data["failed"]["memlim"] += 1
 
     # Merge one-minute intervals data in 15-minute intervals
     fd, output = mkstemp()
@@ -361,3 +373,10 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
 
     return output, num_jobs
 
+
+def get_runtime_index(runtime: int | float) -> int:
+    for x, maxtime in enumerate(RUNTIMES):
+        if runtime <= maxtime:
+            return x
+
+    return -1
