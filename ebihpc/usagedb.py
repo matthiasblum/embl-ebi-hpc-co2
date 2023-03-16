@@ -191,20 +191,20 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
             "done": {
                 "total": 0,
                 "co2e": 0,
-            },
-            "cpueff": [0] * 100,
-            "runtimes": [0] * (len(RUNTIMES) + 1),
-            "memeff": {
-                "dist": [0] * 100,
-                "co2e": 0,
-                "cost": 0
+                "runtimes": [0] * (len(RUNTIMES) + 1),
+                "cpueff": [0] * 100,
+                "memeff": {
+                    "dist": [0] * 100,
+                    "co2e": 0,
+                    "cost": 0
+                },
             },
             "failed": {
                 "total": 0,
                 "co2e": 0,
                 "cost": 0,
-                "runtimes": [0] * (len(RUNTIMES) + 1),
                 "memlim": 0,
+                "more1h": 0,
             }
         })
 
@@ -311,12 +311,12 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
                 job_data["done"]["co2e"] += co2e
                 if mem_eff is not None:
                     j = min(math.floor(mem_eff), 99)
-                    job_data["memeff"]["dist"][j] += 1
+                    job_data["done"]["memeff"]["dist"][j] += 1
 
-                job_data["cpueff"][min(math.floor(cpu_eff), 99)] += 1
+                job_data["done"]["cpueff"][min(math.floor(cpu_eff), 99)] += 1
 
                 x = get_runtime_index(runtime)
-                job_data["runtimes"][x] += 1
+                job_data["done"]["runtimes"][x] += 1
 
                 if mem_eff is not None:
                     # Footprint of entire job with good memory efficiency (+10%)
@@ -325,16 +325,16 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
                     energy_kw = (cores_power + mem_power) / 1000
                     values = const.calc_footprint(energy_kw, runtime / 3600)
                     opti_co2e, opti_cost = values
-                    job_data["memeff"]["co2e"] += (co2e - opti_co2e)
-                    job_data["memeff"]["cost"] += (cost - opti_cost)
+                    job_data["done"]["memeff"]["co2e"] += (co2e - opti_co2e)
+                    job_data["done"]["memeff"]["cost"] += (cost - opti_cost)
             else:
                 user_data["failed"]["total"] += 1
                 job_data["failed"]["total"] += 1
                 job_data["failed"]["co2e"] += co2e
                 job_data["failed"]["cost"] += cost
 
-                x = get_runtime_index(runtime)
-                job_data["failed"]["runtimes"][x] += 1
+                if runtime >= 3600:
+                    job_data["failed"]["more1h"] += 1
 
                 if (mem_max is not None
                         and mem_lim is not None
