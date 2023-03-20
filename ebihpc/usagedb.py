@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from tempfile import mkstemp
 
 from . import const, jobdb
-from .model import UnixUser, User, DT_REPR
+from .model import Job, UnixUser, User, DT_REPR
 
 
 RUNTIMES = [60, 600, 3600, 3 * 3600, 6 * 3600, 12 * 3600, 24 * 3600,
@@ -388,3 +388,25 @@ def get_runtime_index(runtime: int | float) -> int:
             return x
 
     return -1
+
+
+def calc_footprint(job: Job) -> tuple[float, float]:
+    cpu_eff = min(job.cpu_efficiency, 100)
+    cores_power = job.slots * (cpu_eff / 100) * const.CPU_POWER
+    if "gpu" in job.queue:
+        # Unknown GPU number and GPU efficiency: assume 1
+        cores_power += 1 * 1 * const.GPU_POWER
+
+    mem_lim, mem_max, mem_eff = job.fix_mem()
+    mem_gb = (mem_lim or mem_max or 0) / 1024
+    mem_power = mem_gb * const.MEM_POWER
+
+    start_time = job.start_time
+    finish_time = job.finish_time
+    if start_time == finish_time:
+        # One minute or less
+        finish_time += timedelta(minutes=1)
+
+    runtime_min = (finish_time - start_time).total_seconds() / 60
+    energy_kw = (cores_power + mem_power) / 1000
+    return const.calc_footprint(energy_kw, runtime_min / 60)
