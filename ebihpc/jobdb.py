@@ -155,7 +155,7 @@ def get_latest_update_time(con: sqlite3.Connection) -> datetime:
 
 
 def _find_jobs(database: str, from_dt: datetime, to_dt: datetime,
-              user: str | None = None):
+               user: str | None = None):
     con = connect(database)
     from_time = from_dt.strftime(DT_REPR)
     to_time = to_dt.strftime(DT_REPR)
@@ -210,7 +210,7 @@ def _collect_jobs(*args):
 def find_jobs(database: str, from_dt: datetime, to_dt: datetime,
               user: str | None = None, workers: int = 1):
     if workers > 1:
-        jobs = []
+        jobs = {}
         with ProcessPoolExecutor(max_workers=workers) as executor:
             fs = []
             start = from_dt
@@ -223,8 +223,9 @@ def find_jobs(database: str, from_dt: datetime, to_dt: datetime,
                 stop = min(to_dt, start + timedelta(days=1))
 
             for f in as_completed(fs):
-                jobs += f.result()
+                for job in f.result():
+                    jobs[job.accession] = job
 
-            return jobs
+            return list(jobs.values())
     else:
         return _find_jobs(database, from_dt, to_dt, user)
