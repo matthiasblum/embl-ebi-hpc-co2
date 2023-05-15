@@ -54,3 +54,12 @@ python create-report.py [--verbose] /path/to/jobs.database MONTH /path/to/usage.
   * `previous`
   * `current`
   * a given month as `YYYY-MM`
+
+## Print monthly usage
+
+```sh
+python view-usage.py [--from YYYY-MM-DD] [--to YYYY-MM-DD] 
+                     [--interval day|week|month] [--by-team [--num-series N]] 
+                     [--users USER1 USER2...] 
+                     --database /path/to/usage.database
+```

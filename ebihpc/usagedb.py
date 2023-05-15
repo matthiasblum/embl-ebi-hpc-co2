@@ -11,6 +11,7 @@ from . import const, jobdb
 from .model import Job, UnixUser, User, DT_REPR
 
 
+DT_FMT = "%Y%m%d%H%M"
 RUNTIMES = [60, 600, 3600, 3 * 3600, 6 * 3600, 12 * 3600, 24 * 3600,
             48 * 3600, 72 * 3600, 7 * 24 * 3600]
 
@@ -374,7 +375,7 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
                     obj["cputime"] += values["cputime"]
 
             pickle.dump((
-                dt.strftime("%Y%m%d%H%M"),
+                dt.strftime(DT_FMT),
                 _data,
                 jobs_data[i]
             ), fh)
