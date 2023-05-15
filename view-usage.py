@@ -36,6 +36,8 @@ def main():
                              "is enabled (default: all)")
     parser.add_argument("--users", nargs="+",
                         help="List of users (default: all users)")
+    parser.add_argument("--unit", choices=["g", "kg", "t"], default="kg",
+                        help="Unit of CO2-equivalent (default: kg)")
     parser.add_argument("--database", required=True, help="Usage database")
     args = parser.parse_intermixed_args()
 
@@ -108,16 +110,22 @@ def main():
     else:
         print(f"Time", '\t'.join(teams), sep="\t")
 
+    factor, ndigits = {
+        "g": (1, 0),
+        "kg": (1e-3, 0),
+        "t": (1e-6, 3)
+    }[args.unit]
+
     for dt_str in sorted(usage):
         row = [dt_str]
 
         for team in teams:
             co2e = usage[dt_str].pop(team, 0)
-            row.append(str(round(co2e / 1e6, 3)))
+            row.append(str(round(co2e * factor, ndigits)))
 
         if has_others:
             co2e = sum(usage[dt_str].values())
-            row.append(str(round(co2e / 1e6, 3)))
+            row.append(str(round(co2e * factor, ndigits)))
 
         print("\t".join(row))
 
