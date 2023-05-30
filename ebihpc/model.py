@@ -1,10 +1,12 @@
 import json
 import re
 import subprocess as sp
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from urllib.parse import urlencode
 from urllib.request import urlopen
+from urllib.error import HTTPError
 from uuid import uuid4
 
 
@@ -159,8 +161,25 @@ class User(UnixUser):
         if self.uuid is None:
             self.uuid = uuid4().hex
 
-    def update(self):
-        name, position, teams, photo_url = self.get_info(self.login)
+    def update(self, max_attempts: int = 5):
+        attempts = 0
+
+        name = position = photo_url = teams = None
+
+        while True:
+            try:
+                name, position, teams, photo_url = self.get_info(self.login)
+            except HTTPError as exc:
+                # TODO check for HTTP status
+                attempts += 1
+                if attempts < max_attempts:
+                    time.sleep(0.5)
+                    continue
+                else:
+                    raise
+            else:
+                break
+
         if name is None:
             return
 
