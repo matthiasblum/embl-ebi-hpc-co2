@@ -1,3 +1,4 @@
+import json
 from argparse import ArgumentParser
 from datetime import datetime, timedelta
 
@@ -14,8 +15,13 @@ def main():
                         help="select jobs running before the specified time")
     parser.add_argument("-u", "--user", metavar="USER",
                         help="list USER's jobs only")
+    parser.add_argument("-f", "--format",
+                        choices=["jsonl", "tsv"], default="tsv",
+                        help="output format, default: tsv")
     parser.add_argument("database", help="database file")
     args = parser.parse_args()
+
+    to_jsonl = args.format == "jsonl"
 
     today = datetime.today()
     today = datetime(today.year, today.month, today.day)
@@ -31,28 +37,32 @@ def main():
     else:
         to_dt = today + timedelta(days=1)
 
-    print("\t".join([
-        "#ID",
-        "Status",
-        "User",
-        "Queue",
-        "CPUs",
-        "CPU efficiency",
-        "Mem. limit",
-        "Max mem. used",
-        "Submit time",
-        "Start time",
-        "Finish time"
-    ]))
+    if not to_jsonl:
+        print("\t".join([
+            "#ID",
+            "Status",
+            "User",
+            "Queue",
+            "CPUs",
+            "CPU efficiency",
+            "Mem. limit",
+            "Max mem. used",
+            "Submit time",
+            "Start time",
+            "Finish time"
+        ]))
 
     for job in jobdb.find_jobs(args.database, from_dt, to_dt, args.user):
-        row = [f"{job.id}[{job.index}]", job.status, job.user, job.queue,
-               job.slots, job.cpu_efficiency, job.mem_lim, job.mem_max,
-               strftime(job.submit_time, date_fmt),
-               strftime(job.start_time, date_fmt),
-               strftime(job.finish_time, date_fmt)]
-        row = [v if v is not None else "-" for v in row]
-        print("\t".join(map(str, row)))
+        if to_jsonl:
+            print(json.dumps(job.to_dict()))
+        else:
+            row = [f"{job.id}[{job.index}]", job.status, job.user, job.queue,
+                   job.slots, job.cpu_efficiency, job.mem_lim, job.mem_max,
+                   strftime(job.submit_time, date_fmt),
+                   strftime(job.start_time, date_fmt),
+                   strftime(job.finish_time, date_fmt)]
+            row = [v if v is not None else "-" for v in row]
+            print("\t".join(map(str, row)))
 
 
 def strftime(dt: datetime | None, fmt: str) -> str:

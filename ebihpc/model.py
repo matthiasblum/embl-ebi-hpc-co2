@@ -2,8 +2,9 @@ import json
 import re
 import subprocess as sp
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
+from typing import Any
 from urllib.parse import urlencode
 from urllib.request import urlopen
 from urllib.error import HTTPError
@@ -66,6 +67,21 @@ class Job:
             mem_eff = min(self.mem_efficiency, 100)
 
         return mem_lim, self.mem_max, mem_eff
+
+    def to_dict(self) -> dict:
+        return asdict(self, dict_factory=self.dict_factory)
+
+    @staticmethod
+    def dict_factory(data: list[tuple[str, Any]]) -> dict[str, Any]:
+        d = {}
+
+        for attr, value in data:
+            if isinstance(value, datetime):
+                d[attr] = value.strftime(DT_REPR)
+            else:
+                d[attr] = value
+
+        return d
 
     def to_tuple(self) -> tuple:
         return (
