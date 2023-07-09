@@ -171,32 +171,32 @@ def _find_jobs(database: str, from_dt: datetime, to_dt: datetime,
         user_filter = ""
 
     for row in con.execute(
-            f"""
-            SELECT *
-            FROM job
-            WHERE start_time IS NOT NULL
-              AND (
-                (start_time >= ? AND start_time < ?)
-                OR
-                (finish_time >= ? AND finish_time < ?)
-                OR
-                (start_time < ? AND finish_time >= ?)
-              )
-              {user_filter}
-            """,
-            job_params
+        f"""
+        SELECT *
+        FROM job
+        WHERE start_time IS NOT NULL
+          AND (
+            (start_time >= ? AND start_time < ?)
+            OR
+            (finish_time >= ? AND finish_time < ?)
+            OR
+            (start_time < ? AND finish_time >= ?)
+          )
+          {user_filter}
+        """,
+        job_params
     ):
         yield Job.from_tuple(row)
 
     for row in con.execute(
-            f"""
-            SELECT *
-            FROM incomplete
-            WHERE start_time IS NOT NULL
-              AND start_time < ?
-              {user_filter}
-            """,
-            inc_params
+        f"""
+        SELECT *
+        FROM incomplete
+        WHERE start_time IS NOT NULL
+          AND start_time < ?
+          {user_filter}
+        """,
+        inc_params
     ):
         yield Job.from_tuple(row)
 
