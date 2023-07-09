@@ -38,7 +38,7 @@ def main():
         to_time = datetime(from_time.year + 1, 1, 1)
 
     logging.info(f"Creating report for {from_time:%B %Y}")
-        
+
     con = jobdb.connect(args.input)
     last_jobs_update = jobdb.get_latest_update_time(con)
     con.close()
@@ -103,16 +103,18 @@ def main():
         if job.finish_time:
             if job.ok:
                 data["jobs"]["done"] += 1
+
+                if (mem_eff is not None and
+                        mem_lim is not None and
+                        mem_lim >= const.MIN_MEM_REQ):
+                    data["memory"][min(math.floor(mem_eff), 99)] += 1
             else:
                 data["jobs"]["exit"] += 1
 
         data["co2e"] += co2e / runtime_min * minutes
         data["cost"] += cost / runtime_min * minutes
-        if mem_eff is not None:
-            data["memory"][min(math.floor(mem_eff), 99)] += 1
-
         data["cputime"] += job.cpu_time or 0
-            
+
     con.close()
 
     logging.debug(f"{num_jobs:>20,}")

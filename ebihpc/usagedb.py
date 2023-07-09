@@ -288,7 +288,11 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
             if job.ok:
                 user_data["done"] += 1
 
-                if mem_eff is not None:
+                use_mem_eff = (mem_eff is not None and
+                               mem_lim is not None and
+                               mem_lim >= const.MIN_MEM_REQ)
+
+                if use_mem_eff:
                     if mem_eff < 20:
                         user_data["memeff"][0] += 1
                     elif mem_eff < 40:
@@ -313,7 +317,7 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
 
                 job_data["done"]["total"] += 1
                 job_data["done"]["co2e"] += co2e
-                if mem_eff is not None:
+                if use_mem_eff:
                     j = min(math.floor(mem_eff), 99)
                     job_data["done"]["memeff"]["dist"][j] += 1
 
@@ -322,7 +326,7 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
                 x = get_runtime_index(runtime)
                 job_data["done"]["runtimes"][x] += 1
 
-                if mem_eff is not None:
+                if use_mem_eff:
                     # Footprint of entire job with good memory efficiency (+10%)
                     opti_mem = (mem_gb * mem_eff / 100) * 1.1
                     mem_power = opti_mem * const.MEM_POWER
