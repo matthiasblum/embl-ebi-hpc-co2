@@ -6,7 +6,7 @@ MEM_POWER = 0.3725         # (W/GB)
 CARBON_INTENSITY = 231.12  # UK (gCO2e/kWh)
 ENERGY_COST = 0.34         # per kWh
 
-MIN_MEM_REQ = 4            # GB
+MIN_MEM_REQ = 4096         # MB
 
 
 def calc_footprint(energy_kw: float, runtime_h: float) -> tuple[float, float]:
