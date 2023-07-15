@@ -63,7 +63,10 @@ def connect(database: str) -> sqlite3.Connection:
 
 
 def get_users(con: sqlite3.Connection,
-              unix_users: dict[str, UnixUser]) -> list[User]:
+              unix_users: dict[str, UnixUser] | None = None) -> list[User]:
+    if unix_users is None:
+        unix_users = {}
+
     users = []
     for row in con.execute("SELECT * FROM user").fetchall():
         login, name, uuid, teams, position, photo_url, sponsor = row

@@ -44,7 +44,7 @@ def main():
     con = sqlite3.connect(args.database)
 
     users = {}
-    for user in usagedb.get_users(con, {}):
+    for user in usagedb.get_users(con):
         users[user.login] = user.teams if args.by_team else ["EMBL-EBI"]
 
     if args.users:
