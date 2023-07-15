@@ -96,7 +96,7 @@ def main():
                 "memory": [0] * 100,
                 "cputime": 0,
                 "rank": None,
-                "contribution": 0
+                "totalCo2e": 0
             }
 
         data["jobs"]["total"] += 1
@@ -124,7 +124,7 @@ def main():
     for i, user in enumerate(sorted(user_data.values(),
                                     key=lambda u: -u["co2e"])):
         user["rank"] = i + 1
-        user["contribution"] = user["co2e"] / total_co2e
+        user["totalCo2e"] = total_co2e
 
     usagedb.update_reports(args.output, from_time, user_data)
     logging.info("Done")
