@@ -138,19 +138,14 @@ def update_reports(database: str, dt: datetime, data: dict[str, dict]):
     month = dt.strftime("%Y-%m")
 
     con = connect(database)
-    users = get_users(con)
+    user2teams = {u.login: u.teams for u in get_users(con)}
 
     params = []
     teams = {}
     for uname, user_data in data.items():
         params.append((uname, month, json.dumps(user_data)))
 
-        try:
-            user = users[uname]
-        except KeyError:
-            continue
-
-        for team in user.teams:
+        for team in user2teams.get(uname, []):
             try:
                 t = teams[team]
             except KeyError:
