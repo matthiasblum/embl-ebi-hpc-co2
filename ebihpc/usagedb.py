@@ -160,8 +160,8 @@ def update_reports(database: str, dt: datetime, data: dict[str, dict]):
 
             t["jobs"] += user_data["jobs"]["total"] / len(user_teams)
             t["cputime"] += user_data["cputime"] / len(user_teams)
-            t["co2e"] += user_data["jobs"] / len(user_teams)
-            t["cost"] += user_data["jobs"] / len(user_teams)
+            t["co2e"] += user_data["co2e"] / len(user_teams)
+            t["cost"] += user_data["cost"] / len(user_teams)
 
     params.append(("_", month, json.dumps(list(teams.values()))))
     con.executemany("INSERT OR REPLACE INTO report VALUES (?, ?, ?)", params)
