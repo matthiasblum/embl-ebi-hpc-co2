@@ -145,7 +145,8 @@ def update_reports(database: str, dt: datetime, data: dict[str, dict]):
     for uname, user_data in data.items():
         params.append((uname, month, json.dumps(user_data)))
 
-        for team in user2teams.get(uname, []):
+        user_teams = user2teams.get(uname, [])
+        for team in user_teams:
             try:
                 t = teams[team]
             except KeyError:
@@ -157,10 +158,10 @@ def update_reports(database: str, dt: datetime, data: dict[str, dict]):
                     "cost": 0,
                 }
 
-            t["jobs"] += user_data["jobs"]["total"] / len(user.teams)
-            t["cputime"] += user_data["cputime"] / len(user.teams)
-            t["co2e"] += user_data["jobs"] / len(user.teams)
-            t["cost"] += user_data["jobs"] / len(user.teams)
+            t["jobs"] += user_data["jobs"]["total"] / len(user_teams)
+            t["cputime"] += user_data["cputime"] / len(user_teams)
+            t["co2e"] += user_data["jobs"] / len(user_teams)
+            t["cost"] += user_data["jobs"] / len(user_teams)
 
     params.append(("_", month, json.dumps(list(teams.values()))))
     con.executemany("INSERT OR REPLACE INTO report VALUES (?, ?, ?)", params)
