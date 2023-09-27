@@ -271,7 +271,8 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
         # Runtime of the job
         runtime_min = (finish_time - start_time).total_seconds() / 60
         energy_kw = (cores_power + mem_power) / 1000
-        co2e, cost = const.calc_footprint(energy_kw, runtime_min / 60)
+        co2e, cost = const.calc_footprint(energy_kw, runtime_min / 60,
+                                          start_time)
         cpu_time = job.cpu_time or 0
 
         # Move start_time to beginning of interval of interest
@@ -307,7 +308,8 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
 
             # Footprint of entire job
             runtime = (finish_time - job.start_time).total_seconds()
-            co2e, cost = const.calc_footprint(energy_kw, runtime / 3600)
+            co2e, cost = const.calc_footprint(energy_kw, runtime / 3600,
+                                              job.start_time)
 
             user_data = users_extra_data[i][j]
             job_data = jobs_data[i]
@@ -357,7 +359,8 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
                     opti_mem = (mem_gb * mem_eff / 100) * 1.1
                     mem_power = opti_mem * const.MEM_POWER
                     energy_kw = (cores_power + mem_power) / 1000
-                    values = const.calc_footprint(energy_kw, runtime / 3600)
+                    values = const.calc_footprint(energy_kw, runtime / 3600,
+                                                  job.start_time)
                     opti_co2e, opti_cost = values
                     job_data["done"]["memeff"]["co2e"] += (co2e - opti_co2e)
                     job_data["done"]["memeff"]["cost"] += (cost - opti_cost)
