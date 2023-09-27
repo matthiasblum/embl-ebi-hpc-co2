@@ -72,7 +72,8 @@ def main():
 
         runtime_min = (finish_time - start_time).total_seconds() / 60
         energy_kw = (cores_power + mem_power) / 1000
-        co2e, cost = const.calc_footprint(energy_kw, runtime_min / 60)
+        co2e, cost = const.calc_footprint(energy_kw, runtime_min / 60,
+                                          start_time)
         minutes = 0
         for dt in usagedb.range_dt(start_time,
                                    finish_time,

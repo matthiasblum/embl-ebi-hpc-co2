@@ -440,4 +440,4 @@ def calc_footprint(job: Job) -> tuple[float, float]:
 
     runtime_min = (finish_time - start_time).total_seconds() / 60
     energy_kw = (cores_power + mem_power) / 1000
-    return const.calc_footprint(energy_kw, runtime_min / 60)
+    return const.calc_footprint(energy_kw, runtime_min / 60, start_time)
