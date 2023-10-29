@@ -294,91 +294,89 @@ def process_jobs(database: str, from_dt: datetime, to_dt: datetime,
 
         if job.submit_time >= from_dt:
             i = bisect.bisect_right(final_intervals, job.submit_time) - 1
-            if i < 0:
-                raise ValueError
-
-            # Record job as submitted in this interval
-            users_extra_data[i][j]["submitted"] += 1
+            if i >= 0:
+                # Record job as submitted in this interval
+                users_extra_data[i][j]["submitted"] += 1
 
         if job.finish_time and finish_time < to_dt:
             # Record job as completed in this interval
             i = bisect.bisect_right(final_intervals, finish_time) - 1
-            if i < 0:
-                raise ValueError
-
-            # Footprint of entire job
-            runtime = (finish_time - job.start_time).total_seconds()
-            co2e, cost = const.calc_footprint(energy_kw, runtime / 3600,
-                                              job.start_time)
-
-            user_data = users_extra_data[i][j]
-            job_data = jobs_data[i]
-            if job.ok:
-                user_data["done"] += 1
-
-                use_mem_eff = (mem_eff is not None and
-                               mem_lim is not None and
-                               mem_lim >= const.MIN_MEM_REQ)
-
-                if use_mem_eff:
-                    if mem_eff < 20:
-                        user_data["memeff"][0] += 1
-                    elif mem_eff < 40:
-                        user_data["memeff"][1] += 1
-                    elif mem_eff < 60:
-                        user_data["memeff"][2] += 1
-                    elif mem_eff < 80:
-                        user_data["memeff"][3] += 1
-                    else:
-                        user_data["memeff"][4] += 1
-
-                if cpu_eff < 20:
-                    user_data["cpueff"][0] += 1
-                elif cpu_eff < 40:
-                    user_data["cpueff"][1] += 1
-                elif cpu_eff < 60:
-                    user_data["cpueff"][2] += 1
-                elif cpu_eff < 80:
-                    user_data["cpueff"][3] += 1
-                else:
-                    user_data["cpueff"][4] += 1
-
-                job_data["done"]["total"] += 1
-                job_data["done"]["co2e"] += co2e
-                if use_mem_eff:
-                    j = min(math.floor(mem_eff), 99)
-                    job_data["done"]["memeff"]["dist"][j] += 1
-
-                job_data["done"]["cpueff"][min(math.floor(cpu_eff), 99)] += 1
-
-                x = get_runtime_index(runtime)
-                job_data["done"]["runtimes"][x] += 1
-
-                if use_mem_eff:
-                    # Footprint of entire job with good memory efficiency (+10%)
-                    opti_mem = (mem_gb * mem_eff / 100) * 1.1
-                    mem_power = opti_mem * const.MEM_POWER
-                    energy_kw = (cores_power + mem_power) / 1000
-                    values = const.calc_footprint(energy_kw, runtime / 3600,
+            if i >= 0:
+                # Footprint of entire job
+                runtime = (finish_time - job.start_time).total_seconds()
+                co2e, cost = const.calc_footprint(energy_kw, runtime / 3600,
                                                   job.start_time)
-                    opti_co2e, opti_cost = values
-                    job_data["done"]["memeff"]["co2e"] += (co2e - opti_co2e)
-                    job_data["done"]["memeff"]["cost"] += (cost - opti_cost)
-            else:
-                user_data["failed"]["total"] += 1
-                job_data["failed"]["total"] += 1
-                job_data["failed"]["co2e"] += co2e
-                job_data["failed"]["cost"] += cost
 
-                if runtime >= 3600:
-                    job_data["failed"]["more1h"]["total"] += 1
-                    job_data["failed"]["more1h"]["co2e"] += co2e
+                user_data = users_extra_data[i][j]
+                job_data = jobs_data[i]
+                if job.ok:
+                    user_data["done"] += 1
 
-                if (mem_max is not None
-                        and mem_lim is not None
-                        and mem_max > mem_lim):
-                    user_data["failed"]["memlim"] += 1
-                    job_data["failed"]["memlim"] += 1
+                    use_mem_eff = (mem_eff is not None and
+                                   mem_lim is not None and
+                                   mem_lim >= const.MIN_MEM_REQ)
+
+                    if use_mem_eff:
+                        if mem_eff < 20:
+                            user_data["memeff"][0] += 1
+                        elif mem_eff < 40:
+                            user_data["memeff"][1] += 1
+                        elif mem_eff < 60:
+                            user_data["memeff"][2] += 1
+                        elif mem_eff < 80:
+                            user_data["memeff"][3] += 1
+                        else:
+                            user_data["memeff"][4] += 1
+
+                    if cpu_eff < 20:
+                        user_data["cpueff"][0] += 1
+                    elif cpu_eff < 40:
+                        user_data["cpueff"][1] += 1
+                    elif cpu_eff < 60:
+                        user_data["cpueff"][2] += 1
+                    elif cpu_eff < 80:
+                        user_data["cpueff"][3] += 1
+                    else:
+                        user_data["cpueff"][4] += 1
+
+                    job_data["done"]["total"] += 1
+                    job_data["done"]["co2e"] += co2e
+                    if use_mem_eff:
+                        j = min(math.floor(mem_eff), 99)
+                        job_data["done"]["memeff"]["dist"][j] += 1
+
+                    j = min(math.floor(cpu_eff), 99)
+                    job_data["done"]["cpueff"][j] += 1
+
+                    x = get_runtime_index(runtime)
+                    job_data["done"]["runtimes"][x] += 1
+
+                    if use_mem_eff:
+                        # Footprint of entire job with good memory efficiency
+                        # (Mem needed + 10%)
+                        opti_mem = (mem_gb * mem_eff / 100) * 1.1
+                        mem_power = opti_mem * const.MEM_POWER
+                        energy_kw = (cores_power + mem_power) / 1000
+                        values = const.calc_footprint(energy_kw, runtime / 3600,
+                                                      job.start_time)
+                        opti_co2e, opti_cost = values
+                        job_data["done"]["memeff"]["co2e"] += (co2e - opti_co2e)
+                        job_data["done"]["memeff"]["cost"] += (cost - opti_cost)
+                else:
+                    user_data["failed"]["total"] += 1
+                    job_data["failed"]["total"] += 1
+                    job_data["failed"]["co2e"] += co2e
+                    job_data["failed"]["cost"] += cost
+
+                    if runtime >= 3600:
+                        job_data["failed"]["more1h"]["total"] += 1
+                        job_data["failed"]["more1h"]["co2e"] += co2e
+
+                    if (mem_max is not None
+                            and mem_lim is not None
+                            and mem_max > mem_lim):
+                        user_data["failed"]["memlim"] += 1
+                        job_data["failed"]["memlim"] += 1
 
     # Merge one-minute intervals data in 15-minute intervals
     fd, output = mkstemp()
